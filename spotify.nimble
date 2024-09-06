@@ -9,7 +9,7 @@ srcDir      = "src"
 # Deps
 
 requires "nim >= 0.18.0"
-requires "oauth"
+requires "oauth#v0.10"
 
 task test, "Test spotify":
   exec "find src/ -name \"*.nim\" | xargs -I {} nim c -r -d:testing -d:ssl -o:test {}"
