@@ -134,6 +134,6 @@ proc request*(client: SpotifyClient | AsyncSpotifyClient, path: string,
     httpMethod = httpMethod, headers = headers, body = body)
   if response.code == Http429:
     sleep(parseInt(response.headers["Retry-After", 0]) * 1_000) # veri big thanks dude for making multisync lib, so ratelimit will stop entire process! :)
-    result = client.request(path, httpMethod, body, extraHeaders)
+    result = await client.request(path, httpMethod, body, extraHeaders)
   else:
     result = response
