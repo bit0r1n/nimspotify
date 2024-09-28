@@ -14,13 +14,14 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-02
 
+import os
 import uri
 import json
 import tables
 import oauth2
+import strutils
 import httpclient
 import asyncdispatch
-import strutils
 
 const
   AuthorizeUrl = "https://accounts.spotify.com/authorize"
