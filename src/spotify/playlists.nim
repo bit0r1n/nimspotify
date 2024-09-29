@@ -14,23 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-17
 
-import json
-import base64
-import sequtils
-import strformat
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / error
-import objects / image
-import objects / paging
-import objects / snapshot
-import objects / playlist
-import objects / playlisttrack
-import objects / simpleplaylist
-import objects / spotifyresponse
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import json, base64, sequtils, strformat, httpclient, asyncdispatch
+import objects / [ error, image, paging, snapshot, playlist, playlisttrack, simpleplaylist, spotifyresponse, internalunmarshallers ]
 
 const
   PostTracksToPlaylistPath = "/playlists/{playlistId}/tracks"
@@ -46,9 +32,9 @@ const
   ReplacePlaylistTracksPath = "/playlists/{playlistId}/tracks"
   UploadCustomPlaylistCoverImagePath = "/playlists/{playlistId}/images"
 
-proc postTracksToPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
+proc postTracksToPlaylist*(client: AsyncSpotifyClient,
   playlistId: string, uris: seq[string],
-  position = -1): Future[SpotifyResponse[Snapshot]] {.multisync.} =
+  position = -1): Future[Snapshot] {.async.} =
   var body = %* {"uris": uris}
   if position != -1:
     body["position"] = %* position
@@ -64,48 +50,48 @@ proc buildBody(name, description: string): JsonNode =
   if description != "":
     result["description"] = %* description
 
-proc changePlaylistDetails*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string, name, description = ""): Future[SpotifyResponse[void]] {.multisync.} =
+proc changePlaylistDetails*(client: AsyncSpotifyClient,
+  playlistId: string, name, description = "") {.async.} =
   let
     body = buildBody(name, description)
     path = buildPath(ChangePlaylistDetailsPath.fmt, @[])
     response = await client.request(path, body = $body, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc changePlaylistDetails*(client: SpotifyClient | AsyncSpotifyClient,
+proc changePlaylistDetails*(client: AsyncSpotifyClient,
   playlistId: string, public: bool,
-  name, description = ""): Future[SpotifyResponse[void]] {.multisync.} =
+  name, description = "") {.async.} =
   var body = buildBody(name, description)
   body["public"] = %* public
   let
     path = buildPath(ChangePlaylistDetailsPath.fmt, @[])
     response = await client.request(path, body = $body, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc changePlaylistDetails*(client: SpotifyClient | AsyncSpotifyClient,
+proc changePlaylistDetails*(client: AsyncSpotifyClient,
   playlistId: string, collaborative: bool,
-  name, description = ""): Future[SpotifyResponse[void]] {.multisync.} =
+  name, description = "") {.async.} =
   var body = buildBody(name, description)
   body["collaborative"] = %* collaborative
   let
     path = buildPath(ChangePlaylistDetailsPath.fmt, @[])
     response = await client.request(path, body = $body, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc changePlaylistDetails*(client: SpotifyClient | AsyncSpotifyClient,
+proc changePlaylistDetails*(client: AsyncSpotifyClient,
   playlistId: string, public, collaborative: bool,
-  name, description = ""): Future[SpotifyResponse[void]] {.multisync.} =
+  name, description = "") {.async.} =
   var body = buildBody(name, description)
   body["public"] = %* public
   body["collaborative"] = %* collaborative
   let
     path = buildPath(ChangePlaylistDetailsPath.fmt, @[])
     response = await client.request(path, body = $body, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc postPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
+proc postPlaylist*(client: AsyncSpotifyClient,
   userId: string, name: string, public = true,
-  collaborative = false, description = ""): Future[SpotifyResponse[Playlist]] {.multisync.} =
+  collaborative = false, description = ""): Future[Playlist] {.async.} =
   var body = %* {"name": name, "public": public, "collaborative": collaborative}
   if description != "":
     body["description"] = %* description
@@ -114,8 +100,8 @@ proc postPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path, body = $body, httpMethod = HttpPost)
   result = await toResponse[Playlist](response)
 
-proc getUserPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
-  limit = 20, offset = 0): Future[SpotifyResponse[Paging[SimplePlaylist]]] {.multisync.} =
+proc getUserPlaylists*(client: AsyncSpotifyClient,
+  limit = 20, offset = 0): Future[Paging[SimplePlaylist]] {.async.} =
   let
     path = buildPath(GetUserPlaylistsPath, @[
       newQuery("limit", $limit),
@@ -124,9 +110,9 @@ proc getUserPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[SimplePlaylist]](response)
 
-proc getPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
+proc getPlaylists*(client: AsyncSpotifyClient,
   userId: string, limit = 20,
-  offset = 0): Future[SpotifyResponse[Paging[SimplePlaylist]]] {.multisync.} =
+  offset = 0): Future[Paging[SimplePlaylist]] {.async.} =
   let
     path = buildPath(GetPlaylistsPath.fmt, @[
       newQuery("limit", $limit),
@@ -135,20 +121,19 @@ proc getPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[SimplePlaylist]](response)
 
-proc getPlaylistCoverImage*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string): Future[SpotifyResponse[seq[Image]]] {.multisync.} =
+proc getPlaylistCoverImage*(client: AsyncSpotifyClient,
+  playlistId: string): Future[seq[Image]] {.async.} =
   let
     path = buildPath(GetPlaylistCoverImagePath.fmt, @[])
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, toSeq[Image](body))
-  else:
-    result = failure[seq[Image]](code, body)
 
-proc getPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string, fields, market = ""): Future[SpotifyResponse[Playlist]] {.multisync.} =
+  await response.handleError()
+  result = toSeq[Image](body)
+
+proc getPlaylist*(client: AsyncSpotifyClient,
+  playlistId: string, fields, market = ""): Future[Playlist] {.async.} =
   let
     path = buildPath(GetPlaylistPath.fmt, @[
       newQuery("fields", fields),
@@ -157,9 +142,9 @@ proc getPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Playlist](response)
 
-proc getPlaylistTracks*(client: SpotifyClient | AsyncSpotifyClient,
+proc getPlaylistTracks*(client: AsyncSpotifyClient,
   playlistId: string, fields = "", limit = 100,
-  offset = 0, market = ""): Future[SpotifyResponse[Paging[PlaylistTrack]]] {.multisync.} =
+  offset = 0, market = ""): Future[Paging[PlaylistTrack]] {.async.} =
   let
     path = buildPath(GetPlaylistTracksPath.fmt, @[
       newQuery("fields", fields),
@@ -170,8 +155,8 @@ proc getPlaylistTracks*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[PlaylistTrack]](response)
 
-proc deleteTracksFromPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string, tracks: seq[string]): Future[SpotifyResponse[Snapshot]] {.multisync.} =
+proc deleteTracksFromPlaylist*(client: AsyncSpotifyClient,
+  playlistId: string, tracks: seq[string]): Future[Snapshot] {.async.} =
   var body = newJObject()
   var arr = newJArray()
   for track in tracks:
@@ -182,9 +167,9 @@ proc deleteTracksFromPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path, body = $body, httpMethod = HttpDelete)
   result = await toResponse[Snapshot](response)
 
-proc reorderPlaylistTracks*(client: SpotifyClient | AsyncSpotifyClient,
+proc reorderPlaylistTracks*(client: AsyncSpotifyClient,
   playlistId: string, rangeStart, insertBefore: int,
-  rangeLength = 1, snapshotId = ""): Future[SpotifyResponse[Snapshot]] {.multisync.} =
+  rangeLength = 1, snapshotId = ""): Future[Snapshot] {.async.} =
   var body = %* {
     "range_start": rangeStart,
     "range_length": rangeLength,
@@ -197,23 +182,23 @@ proc reorderPlaylistTracks*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path, body = $body, httpMethod = HttpPut)
   result = await toResponse[Snapshot](response)
 
-proc replacePlaylistTracks*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string, uris: seq[string]): Future[SpotifyResponse[void]] {.multisync} =
+proc replacePlaylistTracks*(client: AsyncSpotifyClient,
+  playlistId: string, uris: seq[string]) {.async.} =
   let
     body = %* {"uris": uris}
     path = buildPath(ReplacePlaylistTracksPath.fmt, @[])
     response = await client.request(path, body = $body, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc uploadCustomPlaylistCoverImage*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId, encodedData: string): Future[SpotifyResponse[void]] {.multisync} =
+proc uploadCustomPlaylistCoverImage*(client: AsyncSpotifyClient,
+  playlistId, encodedData: string) {.async.} =
   let
     path = buildPath(UploadCustomPlaylistCoverImagePath.fmt, @[])
     response = await client.request(path, body = encodedData, httpMethod = HttpPut,
       extraHeaders = newHttpHeaders({"Content-Type": "image/jpeg"}))
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc uploadCustomPlaylistCoverImageWithPath*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId, jpegPath: string): Future[SpotifyResponse[void]] {.multisync} =
-  result = await client.uploadCustomPlaylistCoverImage(playlistId,
+proc uploadCustomPlaylistCoverImageWithPath*(client: AsyncSpotifyClient,
+  playlistId, jpegPath: string) {.async.} =
+  await client.uploadCustomPlaylistCoverImage(playlistId,
     encode(readFile(jpegPath)))

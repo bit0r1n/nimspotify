@@ -14,8 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-12
 
-import simpletrack
-import recommendationseed
+import simpletrack, recommendationseed
 
 type
   Recommendations* = ref object

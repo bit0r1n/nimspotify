@@ -14,11 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-18
 
-import track
-import artist
-import paging
-import simplealbum
-import simpleplaylist
+import track, artist, paging, simplealbum, simpleplaylist
 
 type
   SearchResult* = ref object

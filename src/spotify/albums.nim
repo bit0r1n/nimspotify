@@ -14,38 +14,26 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-10
 
-import sequtils
-import httpcore
-import strformat
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / album
-import objects / error
-import objects / paging
-import objects / copyright
-import objects / simpletrack
-import objects / spotifyresponse
-import objects / jsonunmarshaller
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import sequtils, httpcore, strformat, httpclient, asyncdispatch
+import objects / [ album, error, paging, copyright, simpletrack, spotifyresponse, jsonunmarshaller, internalunmarshallers ]
 
 const
   GetAlbumPath = "/albums/{id}"
   GetTracksPath = "/albums/{id}/tracks"
   GetAlbumsPath = "/albums"
 
-proc getAlbum*(client: SpotifyClient | AsyncSpotifyClient,
-  id: string, market = ""): Future[SpotifyResponse[Album]] {.multisync.} =
+proc getAlbum*(client: AsyncSpotifyClient,
+  id: string, market = ""): Future[Album] {.async.} =
   let
     path = buildPath(GetAlbumPath.fmt, @[newQuery("market", market)])
     response = await client.request(path)
     unmarshaller = newJsonUnmarshaller(copyrightReplaceTargets)
   result = await toResponse[Album](unmarshaller, response)
 
-proc getAlbumTracks*(client: SpotifyClient | AsyncSpotifyClient,
+proc getAlbumTracks*(client: AsyncSpotifyClient,
   id: string, limit = 20, offset = 0,
-  market = ""): Future[SpotifyResponse[Paging[SimpleTrack]]] {.multisync.} =
+  market = ""): Future[Paging[SimpleTrack]] {.async.} =
   let
     path = buildPath(GetTracksPath.fmt, @[
       newQuery("market", market),
@@ -55,8 +43,8 @@ proc getAlbumTracks*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[SimpleTrack]](response)
 
-proc getAlbums*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string] = @[], market = ""): Future[SpotifyResponse[seq[Album]]] {.multisync.} =
+proc getAlbums*(client: AsyncSpotifyClient,
+  ids: seq[string] = @[], market = ""): Future[seq[Album]] {.async.} =
   let
     path = buildpath(GetAlbumsPath, @[
       newQuery("ids", ids.foldr(a & "," & b)),
@@ -66,7 +54,6 @@ proc getAlbums*(client: SpotifyClient | AsyncSpotifyClient,
     body = await response.body
     unmarshaller = newJsonUnmarshaller(copyrightReplaceTargets)
     code = response.code
-  if code.is2xx:
-    result = success(code, toSeq[Album](unmarshaller, body, "albums"))
-  else:
-    result = failure[seq[Album]](code, body)
+
+  await response.handleError()
+  result = toSeq[Album](unmarshaller, body, "albums")

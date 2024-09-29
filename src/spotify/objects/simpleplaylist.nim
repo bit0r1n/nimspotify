@@ -15,11 +15,7 @@
 # date  : 2018-09-12
 
 import json
-import image
-import tracklink
-import publicuser
-import externalurl
-import jsonunmarshaller
+import image, tracklink, publicuser, externalurl, jsonunmarshaller
 
 type
   PlaylistVisibility* = enum

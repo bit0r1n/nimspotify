@@ -14,14 +14,8 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-02
 
-import os
-import uri
-import json
-import tables
-import oauth2
-import strutils
-import httpclient
-import asyncdispatch
+import oauth/oauth2
+import uri, json, tables, strutils, httpclient, asyncdispatch, base64, std/sysrand
 
 const
   AuthorizeUrl = "https://accounts.spotify.com/authorize"
@@ -33,8 +27,6 @@ type
     accessToken*, refreshToken*, expiresIn*: string
   BaseClient = object of RootObj
     accessToken, refreshToken, expiresIn: string
-  SpotifyClient* = ref object of BaseClient
-    client: HttpClient
   AsyncSpotifyClient* = ref object of BaseClient
     client: AsyncHttpClient
 
@@ -66,23 +58,6 @@ proc newSpotifyToken(json, refreshToken: string): SpotifyToken =
     expiresIn: json["expires_in"].getStr
   )
 
-proc newSpotifyClient*(client: HttpClient, token: SpotifyToken): SpotifyClient =
-  return SpotifyClient(
-    accessToken: token.accessToken,
-    refreshToken: token.refreshToken,
-    expiresIn: token.expiresIn,
-    client: client
-  )
-
-proc newSpotifyClient*(token: SpotifyToken): SpotifyClient =
-  let client = newHttpClient()
-  return SpotifyClient(
-    accessToken: token.accessToken,
-    refreshToken: token.refreshToken,
-    expiresIn: token.expiresIn,
-    client: client
-  )
-
 proc newAsyncSpotifyClient*(client: AsyncHttpClient, token: SpotifyToken): AsyncSpotifyClient =
   return AsyncSpotifyClient(
     accessToken: token.accessToken,
@@ -100,20 +75,21 @@ proc newAsyncSpotifyClient*(token: SpotifyToken): AsyncSpotifyClient =
     client: client
   )
 
-proc authorizationCodeGrant*(client: HttpClient | AsyncHttpClient,
-  clientId, clientSecret: string, scope: seq[string]): Future[SpotifyToken] {.multisync.} =
+proc authorizationCodeGrant*(client: AsyncHttpClient,
+  clientId, clientSecret: string, scope: seq[string], state = ""): Future[SpotifyToken] {.async.} =
   let response = await client.authorizationCodeGrant(
-    AuthorizeUrl, TokenUrl, clientId, clientSecret, scope = scope)
+    AuthorizeUrl, TokenUrl, clientId, clientSecret, scope = scope,
+    state = if state.len == 0: encodeUrl(encode(urandom(128), safe = true)) else: state)
   result = newSpotifyToken(await response.body)
 
-proc clientCredsGrant*(client: HttpClient | AsyncHttpClient,
-  clientId, clientSecret: string, scope: seq[string]): Future[SpotifyToken] {.multisync.} =
+proc clientCredsGrant*(client: AsyncHttpClient,
+  clientId, clientSecret: string, scope: seq[string]): Future[SpotifyToken] {.async.} =
   let response = await client.clientCredsGrant(
     TokenUrl, clientId, clientSecret, scope = scope)
   result = newSpotifyToken(await response.body)
 
-proc refreshToken*(client: SpotifyClient | AsyncSpotifyClient,
-  clientId, clientSecret: string, scope: seq[string]): Future[SpotifyToken] {.multisync.} =
+proc refreshToken*(client: AsyncSpotifyClient,
+  clientId, clientSecret: string, scope: seq[string]): Future[SpotifyToken] {.async.} =
   if client.refreshToken == "":
     raise newException(UnsupportedAuthorizationFlowError, "Refresh token is empty.")
   let response = await client.client.refreshToken(
@@ -123,9 +99,9 @@ proc refreshToken*(client: SpotifyClient | AsyncSpotifyClient,
   client.expiresIn = result.expiresIn
   client.refreshToken = result.refreshToken
 
-proc request*(client: SpotifyClient | AsyncSpotifyClient, path: string,
+proc request*(client: AsyncSpotifyClient, path: string,
   httpMethod = HttpGet, body = "",
-  extraHeaders: HttpHeaders = nil): Future[Response | AsyncResponse] {.multisync.} =
+  extraHeaders: HttpHeaders = nil): Future[AsyncResponse] {.async.} =
   var headers = getBearerRequestHeader(client.accessToken)
   if extraHeaders != nil:
     for k, v in extraHeaders.table:
@@ -133,7 +109,7 @@ proc request*(client: SpotifyClient | AsyncSpotifyClient, path: string,
   let response = await client.client.request($(BaseUrl.parseUri() / path),
     httpMethod = httpMethod, headers = headers, body = body)
   if response.code == Http429:
-    sleep(parseInt(response.headers["Retry-After", 0]) * 1_000) # veri big thanks dude for making multisync lib, so ratelimit will stop entire process! :)
+    await sleepAsync(parseInt(response.headers["Retry-After", 0]) * 1_000)
     result = await client.request(path, httpMethod, body, extraHeaders)
   else:
     result = response

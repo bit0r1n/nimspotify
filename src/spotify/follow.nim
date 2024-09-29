@@ -14,18 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-13
 
-import json
-import sequtils
-import strformat
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / error
-import objects / artist
-import objects / spotifyresponse
-import objects / cursorbasedpaging
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import json, sequtils, strformat, httpclient, asyncdispatch
+import objects / [ error, artist, spotifyresponse, cursorbasedpaging, internalunmarshallers ]
 
 const
   IsFollowingPath = "/me/following/contains"
@@ -36,8 +27,8 @@ const
   UnfollowPath = "/me/following"
   UnfollowPlaylistPath = "/playlists/{playlistId}/followers"
 
-proc internalIsFollow(client: SpotifyClient | AsyncSpotifyClient,
-  followType: string, ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+proc internalIsFollow(client: AsyncSpotifyClient,
+  followType: string, ids: seq[string]): Future[seq[bool]] {.async.} =
   let
     path = buildPath(IsFollowingPath, @[
       newQuery("type", followType),
@@ -46,26 +37,23 @@ proc internalIsFollow(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    let json = parseJson body
-    var results: seq[bool] = @[]
-    for elem in json.elems:
-      results.add elem.getBool
-    result = success(code, results)
-  else:
-    result = failure[seq[bool]](code, body)
 
-proc isFollowArtist*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+  await response.handleError()
+  let json = parseJson body
+  for elem in json.elems:
+    result.add elem.getBool
+
+proc isFollowArtist*(client: AsyncSpotifyClient,
+  ids: seq[string]): Future[seq[bool]] {.async.} =
   result = await client.internalIsFollow("artist", ids)
 
-proc isFollowUser*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+proc isFollowUser*(client: AsyncSpotifyClient,
+  ids: seq[string]): Future[seq[bool]] {.async.} =
   result = await client.internalIsFollow("user", ids)
 
-proc isFollowPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
+proc isFollowPlaylist*(client: AsyncSpotifyClient,
   ownerId, playlistId: string,
-  ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+  ids: seq[string]): Future[seq[bool]] {.async.} =
   let
     path = buildPath(IsFollowingPlaylistPath.fmt, @[
       newQuery("ids", ids.foldr(a & "," & b))
@@ -73,43 +61,40 @@ proc isFollowPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    let json = parseJson body
-    var results: seq[bool] = @[]
-    for elem in json.elems:
-      results.add elem.getBool
-    result = success(code, results)
-  else:
-    result = failure[seq[bool]](code, body)
 
-proc internalFollow(client: SpotifyClient | AsyncSpotifyClient,
-  followType: string, ids: seq[string]): Future[SpotifyResponse[void]] {.multisync.} =
+  await response.handleError()
+  let json = parseJson body
+  for elem in json.elems:
+    result.add elem.getBool
+
+proc internalFollow(client: AsyncSpotifyClient,
+  followType: string, ids: seq[string]) {.async.} =
   let
     path = buildPath(FollowPath, @[
       newQuery("type", followType),
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc followArtist*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[void]] {.multisync.} =
-  result = await client.internalFollow("artist", ids)
+proc followArtist*(client: AsyncSpotifyClient,
+  ids: seq[string]) {.async.} =
+  await client.internalFollow("artist", ids)
 
-proc followUser*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[void]] {.multisync.} =
-  result = await client.internalFollow("user", ids)
+proc followUser*(client: AsyncSpotifyClient,
+  ids: seq[string]) {.async.} =
+  await client.internalFollow("user", ids)
 
-proc followPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string, public = true): Future[SpotifyResponse[void]] {.multisync.} =
+proc followPlaylist*(client: AsyncSpotifyClient,
+  playlistId: string, public = true) {.async.} =
   let
     path = buildPath(FollowPlaylistPath.fmt, @[])
     body = %* {"public": public}
     response = await client.request(path, body = $body, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc getFollowedArtists*(client: SpotifyClient | AsyncSpotifyClient,
-  limit = 20, after = ""): Future[SpotifyResponse[CursorBasedPaging[Artist]]] {.multisync.} =
+proc getFollowedArtists*(client: AsyncSpotifyClient,
+  limit = 20, after = ""): Future[CursorBasedPaging[Artist]] {.async.} =
   let
     path = buildPath(GetFollowedPath, @[
       newQuery("type", "artist"),
@@ -119,32 +104,31 @@ proc getFollowedArtists*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, to[CursorBasedPaging[Artist]](body, "artists"))
-  else:
-    result = failure[CursorBasedPaging[Artist]](code, body)
 
-proc internalUnfollow(client: SpotifyClient | AsyncSpotifyClient,
-  followType: string, ids: seq[string]): Future[SpotifyResponse[void]] {.multisync.} =
+  await response.handleError()
+  result = to[CursorBasedPaging[Artist]](body, "artists")
+
+proc internalUnfollow(client: AsyncSpotifyClient,
+  followType: string, ids: seq[string]) {.async.} =
   let
     path = buildPath(UnfollowPath, @[
       newQuery("type", followType),
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path, httpMethod = HttpDelete)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc unfollowArtist*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[void]] {.multisync.} =
-  result = await client.internalUnfollow("artist", ids)
+proc unfollowArtist*(client: AsyncSpotifyClient,
+  ids: seq[string]) {.async.} =
+  await client.internalUnfollow("artist", ids)
 
-proc unfollowUser*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[void]] {.multisync.} =
-  result = await client.internalUnfollow("user", ids)
+proc unfollowUser*(client: AsyncSpotifyClient,
+  ids: seq[string]) {.async.} =
+  await client.internalUnfollow("user", ids)
 
-proc unfollowPlaylist*(client: SpotifyClient | AsyncSpotifyClient,
-  playlistId: string): Future[SpotifyResponse[void]] {.multisync.} =
+proc unfollowPlaylist*(client: AsyncSpotifyClient,
+  playlistId: string) {.async.} =
   let
     path = buildPath(UnfollowPlaylistPath.fmt, @[])
     response = await client.request(path, httpMethod = HttpDelete)
-  result = await toEmptyResponse(response)
+  await response.handleError()

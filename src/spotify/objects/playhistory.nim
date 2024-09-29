@@ -14,8 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
-import context
-import simpletrack
+import context, simpletrack
 
 type
   PlayHistory* = ref object

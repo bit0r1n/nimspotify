@@ -14,20 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-15
 
-import json
-import sequtils
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / error
-import objects / paging
-import objects / copyright
-import objects / savedalbum
-import objects / savedtrack
-import objects / spotifyresponse
-import objects / jsonunmarshaller
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import json, sequtils, httpclient, asyncdispatch
+import objects / [ error, paging, copyright,  savedalbum, savedtrack, spotifyresponse, jsonunmarshaller, internalunmarshallers ]
 
 const
   IsSavedAlbumsPath = "/me/albums/contains"
@@ -39,8 +28,8 @@ const
   SaveAlbumsPath = "/me/albums"
   SaveTracksPath = "/me/tracks"
 
-proc internalIsSaved(client: SpotifyClient | AsyncSpotifyClient,
-  path: string, ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+proc internalIsSaved(client: AsyncSpotifyClient,
+  path: string, ids: seq[string]): Future[seq[bool]] {.async.} =
   let
     path = buildPath(path, @[
       newQuery("ids", ids.foldr(a & "," & b))
@@ -48,26 +37,24 @@ proc internalIsSaved(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    let json = parseJson body
-    var results: seq[bool] = @[]
-    for elem in json.elems:
-      results.add elem.getBool
-    result = success(code, results)
-  else:
-    result = failure[seq[bool]](code, body)
 
-proc isSavedAlbums*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+  await response.handleError()
+
+  let json = parseJson body
+  for elem in json.elems:
+    result.add elem.getBool
+
+proc isSavedAlbums*(client: AsyncSpotifyClient,
+  ids: seq[string]): Future[seq[bool]] {.async.} =
   result = await client.internalIsSaved(IsSavedAlbumsPath, ids)
 
-proc isSavedTracks*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[seq[bool]]] {.multisync.} =
+proc isSavedTracks*(client: AsyncSpotifyClient,
+  ids: seq[string]): Future[seq[bool]] {.async.} =
   result = await client.internalIsSaved(IsSavedTracksPath, ids)
 
-proc getSavedAlbums*(client: SpotifyClient | AsyncSpotifyClient,
+proc getSavedAlbums*(client: AsyncSpotifyClient,
   limit = 20, offset = 0,
-  market = ""): Future[SpotifyResponse[Paging[SavedAlbum]]] {.multisync.} =
+  market = ""): Future[Paging[SavedAlbum]] {.async.} =
   let
     path = buildPath(GetSavedAlbumsPath, @[
       newQuery("market", market),
@@ -78,9 +65,9 @@ proc getSavedAlbums*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[SavedAlbum]](unmarshaller, response)
 
-proc getSavedTracks*(client: SpotifyClient | AsyncSpotifyClient,
+proc getSavedTracks*(client: AsyncSpotifyClient,
   limit = 20, offset = 0,
-  market = ""): Future[SpotifyResponse[Paging[SavedTrack]]] {.multisync.} =
+  market = ""): Future[Paging[SavedTrack]] {.async.} =
   let
     path = buildPath(GetSavedTracksPath, @[
       newQuery("market", market),
@@ -90,38 +77,38 @@ proc getSavedTracks*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[SavedTrack]](response)
 
-proc deleteSavedAlbums*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string] = @[]): Future[SpotifyResponse[void]] {.multisync.} =
+proc deleteSavedAlbums*(client: AsyncSpotifyClient,
+  ids: seq[string] = @[]) {.async.} =
   let
     path = buildPath(DeleteSavedAlbumsPath, @[
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path, httpMethod = HttpDelete)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc deleteSavedTracks*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string] = @[]): Future[SpotifyResponse[void]] {.multisync.} =
+proc deleteSavedTracks*(client: AsyncSpotifyClient,
+  ids: seq[string] = @[]) {.async.} =
   let
     path = buildPath(DeleteSavedTracksPath, @[
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path, httpMethod = HttpDelete)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc saveAlbums*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string] = @[]): Future[SpotifyResponse[void]] {.multisync.} =
+proc saveAlbums*(client: AsyncSpotifyClient,
+  ids: seq[string] = @[]) {.async.} =
   let
     path = buildPath(SaveAlbumsPath, @[
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()
 
-proc saveTracks*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string] = @[]): Future[SpotifyResponse[void]] {.multisync.} =
+proc saveTracks*(client: AsyncSpotifyClient,
+  ids: seq[string] = @[]) {.async.} =
   let
     path = buildPath(SaveTracksPath, @[
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path, httpMethod = HttpPut)
-  result = await toEmptyResponse(response)
+  await response.handleError()

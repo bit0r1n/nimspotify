@@ -14,17 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-14
 
-import strformat
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / error
-import objects / track
-import objects / artist
-import objects / paging
-import objects / spotifyresponse
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import strformat, httpclient, asyncdispatch
+import objects / [ error, track, artist, paging, spotifyresponse, internalunmarshallers ]
 
 const
   GetUserTopDataPath = "/me/top/{getType}"
@@ -35,9 +27,9 @@ type
     TypeMediumTerm = "medium_term"
     TypeShortTerm = "short_term"
 
-proc internalGet(client: SpotifyClient | AsyncSpotifyClient,
+proc internalGet(client: AsyncSpotifyClient,
   getType: string, limit = 20, offset = 0,
-  timeRange = TypeMediumTerm): Future[Response | AsyncResponse] {.multisync.} =
+  timeRange = TypeMediumTerm): Future[AsyncResponse] {.async.} =
   let
     path = buildPath(GetUserTopDataPath.fmt, @[
       newQuery("limit", $limit),
@@ -46,14 +38,14 @@ proc internalGet(client: SpotifyClient | AsyncSpotifyClient,
     ])
   result = await client.request(path)
 
-proc getUserTopArtists*(client: SpotifyClient | AsyncSpotifyClient,
+proc getUserTopArtists*(client: AsyncSpotifyClient,
   limit = 20, offset = 0,
-  timeRange = TypeMediumTerm): Future[SpotifyResponse[Paging[Artist]]] {.multisync.} =
+  timeRange = TypeMediumTerm): Future[Paging[Artist]] {.async.} =
   let response = await client.internalGet("artists")
   result = await toResponse[Paging[Artist]](response)
 
-proc getUserTopTracks*(client: SpotifyClient | AsyncSpotifyClient,
+proc getUserTopTracks*(client: AsyncSpotifyClient,
   limit = 20, offset = 0,
-  timeRange = TypeMediumTerm): Future[SpotifyResponse[Paging[Track]]] {.multisync.} =
+  timeRange = TypeMediumTerm): Future[Paging[Track]] {.async.} =
   let response = await client.internalGet("tracks")
   result = await toResponse[Paging[Track]](response)

@@ -14,14 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
-import image
-import paging
-import copyright
-import externalid
-import externalurl
-import simpletrack
-import restrictions
-import simpleartist
+import image, paging, copyright, externalid, externalurl, simpletrack, restrictions, simpleartist
 
 type
   Album* = ref object

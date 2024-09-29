@@ -14,12 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
-import image
-import paging
-import followers
-import publicuser
-import externalurl
-import playlisttrack
+import image, paging, followers, publicuser, externalurl, playlisttrack
 
 type
   Playlist* = ref object

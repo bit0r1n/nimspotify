@@ -14,25 +14,20 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-02
 
-import httpclient
 import spotifyclient
-import asyncdispatch
-import objects / user
-import objects / error
-import objects / publicuser
-import objects / spotifyresponse
-import objects / internalunmarshallers
+import httpclient, asyncdispatch
+import objects / [ user, error, publicuser, spotifyresponse, internalunmarshallers ]
 
 const
   GetMePath = "/me"
   GetUserPath = "/users/"
 
-proc getCurrentUser*(client: SpotifyClient | AsyncSpotifyClient
-  ): Future[SpotifyResponse[User]] {.multisync.} =
+proc getCurrentUser*(client: AsyncSpotifyClient
+  ): Future[User] {.async.} =
   let response = await client.request(GetMePath)
   result = await toResponse[User](response)
 
-proc getUser*(client: SpotifyClient | AsyncSpotifyClient,
-  id: string): Future[SpotifyResponse[PublicUser]] {.multisync.} =
+proc getUser*(client: AsyncSpotifyClient,
+  id: string): Future[PublicUser] {.async.} =
   let response = await client.request(GetUserPath & id)
   result = await toResponse[PublicUser](response)

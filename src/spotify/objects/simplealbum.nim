@@ -14,10 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
-import image
-import externalurl
-import simpleartist
-import restrictions
+import image, externalurl, simpleartist, restrictions
 
 type
   SimpleAlbum* = ref object

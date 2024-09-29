@@ -14,12 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-05
 
-import externalid
-import linkedtrack
-import externalurl
-import simplealbum
-import simpleartist
-import restrictions
+import externalid, linkedtrack, externalurl, simplealbum, simpleartist, restrictions
 
 type
   Track* = ref object

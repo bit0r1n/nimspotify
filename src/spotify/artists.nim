@@ -14,20 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-10
 
-import sequtils
-import strformat
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / track
-import objects / error
-import objects / artist
-import objects / paging
-import objects / simplealbum
-import objects / spotifyresponse
-import objects / jsonunmarshaller
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import sequtils, strformat, httpclient, asyncdispatch
+import objects / [ track, error, artist, paging, simplealbum, spotifyresponse, jsonunmarshaller, internalunmarshallers ]
 
 const
   GetAristPath = "/artists/{id}"
@@ -43,16 +32,16 @@ type
     TypeAppearsOn = "appears_on"
     TypeCompilation = "compilation"
 
-proc getArtist*(client: SpotifyClient | AsyncSpotifyClient,
-  id: string): Future[SpotifyResponse[Artist]] {.multisync.} =
+proc getArtist*(client: AsyncSpotifyClient,
+  id: string): Future[Artist] {.async.} =
   let
     path = buildPath(GetAristPath.fmt, @[])
     response = await client.request(path)
   result = await toResponse[Artist](response)
 
-proc getArtistAlbums*(client: SpotifyClient | AsyncSpotifyClient,
+proc getArtistAlbums*(client: AsyncSpotifyClient,
   id: string, includeGroups: seq[IncludeGroupType] = @[],
-  market = "", limit = 20, offset = 0): Future[SpotifyResponse[Paging[SimpleAlbum]]] {.multisync.} =
+  market = "", limit = 20, offset = 0): Future[Paging[SimpleAlbum]] {.async.} =
   var queries = @[
     newQuery("market", market),
     newQuery("limit", $limit),
@@ -67,38 +56,35 @@ proc getArtistAlbums*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Paging[SimpleAlbum]](response)
 
-proc getArtistTopTracks*(client: SpotifyClient | AsyncSpotifyClient,
-  id, market: string): Future[SpotifyResponse[seq[Track]]] {.multisync.} =
+proc getArtistTopTracks*(client: AsyncSpotifyClient,
+  id, market: string): Future[seq[Track]] {.async.} =
   let
     path = buildPath(GetArtistTopTracksPath.fmt, @[newQuery("market", market)])
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, toSeq[Track](body, "tracks"))
-  else:
-    result = failure[seq[Track]](code, body)
 
-proc getArtistRelatedArtists*(client: SpotifyClient | AsyncSpotifyClient,
-  id: string): Future[SpotifyResponse[seq[Artist]]] {.multisync.} =
+  await response.handleError()
+  result = toSeq[Track](body, "tracks")
+
+proc getArtistRelatedArtists*(client: AsyncSpotifyClient,
+  id: string): Future[seq[Artist]] {.async.} =
   let
     path = buildPath(GetArtistRelatedArtistsPath.fmt, @[])
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, toSeq[Artist](body, "artists"))
-  else:
-    result = failure[seq[Artist]](code, body)
 
-proc getArtists*(client: SpotifyClient | AsyncSpotifyClient,
-  ids: seq[string]): Future[SpotifyResponse[seq[Artist]]] {.multisync.} =
+  await response.handleError()
+  result = toSeq[Artist](body, "artists")
+
+proc getArtists*(client: AsyncSpotifyClient,
+  ids: seq[string]): Future[seq[Artist]] {.async.} =
   let
     path = buildPath(GetArtistsPath, @[newQuery("ids", ids.foldr(a & "," & b))])
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, toSeq[Artist](body, "artists"))
-  else:
-    result = failure[seq[Artist]](code, body)
+
+  await response.handleError()
+  result = toSeq[Artist](body, "artists")

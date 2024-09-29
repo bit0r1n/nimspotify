@@ -14,9 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
-import image
-import followers
-import externalurl
+import image, followers, externalurl
 
 type
   PublicUser* = ref object

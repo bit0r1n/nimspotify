@@ -14,71 +14,44 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-20
 
-import json
-import error
-import httpcore
-import httpclient
-import asyncdispatch
-import jsonunmarshaller
-import internalunmarshallers
+import json, httpcore, httpclient, asyncdispatch
+import error, jsonunmarshaller, internalunmarshallers
 
-type
-  SpotifyResponse*[T] = ref object
-    isSuccess*: bool
-    code*: HttpCode
-    data*: T
-    error*: Error
-
-proc success*[T](code: HttpCode, data: T): SpotifyResponse[T] =
-  result = SpotifyResponse[T](
-    isSuccess: true,
-    code: code,
-    data: data
-  )
-
-proc success*(code: HttpCode): SpotifyResponse[void] =
-  result = SpotifyResponse[void](
-    isSuccess: true,
-    code: code
-  )
-
-proc failure[T](code: HttpCode, error: Error): SpotifyResponse[T] =
-  result = SpotifyResponse[T](
-    isSuccess: false,
-    code: code,
-    error: error
-  )
-
-proc failure*[T](code: HttpCode, body: string): SpotifyResponse[T] =
-  result = SpotifyResponse[T](
-    isSuccess: false,
-    code: code,
-    error: to[Error](newJsonUnmarshaller(), body, "error")
-  )
-
-proc toResponse*[T : ref object](unmarshaller: JsonUnmarshaller,
-  response: Response | AsyncResponse): Future[SpotifyResponse[T]] {.multisync.} =
+proc toResponse*[T: ref object](unmarshaller: JsonUnmarshaller,
+  response: AsyncResponse): Future[T] {.async.} =
   let
     body = await response.body
     code = response.code
   if code.is2xx:
     if body == "":
-      result = success[T](code, nil)
+      result = nil
     else:
-      result = success(code, to[T](unmarshaller, body))
+      result = to[T](unmarshaller, body)
   else:
-    result = failure[T](code, to[Error](unmarshaller, body, "error"))
+    let errorResponse = to[ErrorSpotifyResponse](unmarshaller, body, "error")
+    var e: SpotifyError
+    e.msg = errorResponse.message
+    e.status = HttpCode(errorResponse.status)
 
-proc toResponse*[T : ref object](response: Response | AsyncResponse
-  ): Future[SpotifyResponse[T]] {.multisync.} =
+    raise e
+
+proc toResponse*[T : ref object](response: AsyncResponse
+  ): Future[T] {.async.} =
   result = await toResponse[T](newJsonUnmarshaller(), response)
 
-proc toEmptyResponse*(response: Response | AsyncResponse
-  ): Future[SpotifyResponse[void]] {.multisync.} =
+proc handleError*(unmarshaller: JsonUnmarshaller, response: AsyncResponse
+  ) {.async.} =
   let
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code)
-  else:
-    result = failure[void](code, body)
+  if not code.is2xx:
+    let errorResponse = to[ErrorSpotifyResponse](unmarshaller, body, "error")
+    var e: SpotifyError
+    e.msg = errorResponse.message
+    e.status = HttpCode(errorResponse.status)
+
+    raise e
+
+proc handleError*(response: AsyncResponse
+  ) {.async.} =
+    await handleError(newJsonUnmarshaller(), response)

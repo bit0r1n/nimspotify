@@ -14,8 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-13
 
-import paging
-import simpleplaylist
+import paging, simpleplaylist
 
 type
   FeaturedPlaylists* = ref object

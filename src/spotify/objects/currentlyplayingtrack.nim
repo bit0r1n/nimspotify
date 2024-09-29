@@ -14,9 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-17
 
-import track
-import context
-import currentlyplayingcontext
+import track, context, currentlyplayingcontext
 
 type
   CurrentlyPlayingTrack* = ref object

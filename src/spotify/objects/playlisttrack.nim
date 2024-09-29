@@ -14,8 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-17
 
-import user
-import track
+import user, track
 
 type
   PlaylistTrack* = ref object

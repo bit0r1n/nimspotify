@@ -14,23 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-12
 
-import sequtils
-import strformat
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / error
-import objects / paging
-import objects / category
-import objects / simplealbum
-import objects / simpleplaylist
-import objects / spotifyresponse
-import objects / recommendations
-import objects / jsonunmarshaller
-import objects / featuredplaylists
-import objects / recommendationseed
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import sequtils, strformat, httpclient, asyncdispatch
+import objects / [ error, paging, category, simplealbum, simpleplaylist, spotifyresponse, recommendations, jsonunmarshaller, featuredplaylists, recommendationseed, internalunmarshallers ]
 
 const
   GetCategoryPath = "/browse/categories/{id}"
@@ -40,8 +26,8 @@ const
   GetNewReleasesPath = "/browse/new-releases"
   GetRecommendationsPath = "/recommendations"
 
-proc getCategory*(client: SpotifyClient | AsyncSpotifyClient,
-  id: string, country, locale = ""): Future[SpotifyResponse[Category]] {.multisync.} =
+proc getCategory*(client: AsyncSpotifyClient,
+  id: string, country, locale = ""): Future[Category] {.async.} =
   let
     path = buildPath(GetCategoryPath.fmt, @[
       newQuery("country", country),
@@ -50,9 +36,9 @@ proc getCategory*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[Category](response)
 
-proc getCategoryPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
+proc getCategoryPlaylists*(client: AsyncSpotifyClient,
   id: string, country = "",
-  limit = 20, offset = 0): Future[SpotifyResponse[Paging[SimplePlaylist]]] {.multisync.} =
+  limit = 20, offset = 0): Future[Paging[SimplePlaylist]] {.async.} =
   let
     path = buildPath(GetCategoryPlaylistsPath.fmt, @[
       newQuery("country", country),
@@ -62,14 +48,13 @@ proc getCategoryPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, to[Paging[SimplePlaylist]](body, "playlists"))
-  else:
-    result = failure[Paging[SimplePlaylist]](code, body)
 
-proc getCategories*(client: SpotifyClient | AsyncSpotifyClient,
+  await response.handleError()
+  result = to[Paging[SimplePlaylist]](body, "playlists")
+
+proc getCategories*(client: AsyncSpotifyClient,
   country, locale = "", limit = 20,
-  offset = 0): Future[SpotifyResponse[Paging[Category]]] {.multisync.} =
+  offset = 0): Future[Paging[Category]] {.async.} =
   let
     path = buildPath(GetCategoriesPath, @[
       newQuery("country", country),
@@ -80,14 +65,13 @@ proc getCategories*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, to[Paging[Category]](body, "categories"))
-  else:
-    result = failure[Paging[Category]](code, body)
 
-proc getFeaturedPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
+  await response.handleError()
+  result = to[Paging[Category]](body, "categories")
+
+proc getFeaturedPlaylists*(client: AsyncSpotifyClient,
   country, locale, timestamp = "", limit = 20,
-  offset = 0): Future[SpotifyResponse[FeaturedPlaylists]] {.multisync.} =
+  offset = 0): Future[FeaturedPlaylists] {.async.} =
   let
     path = buildPath(GetFeaturedPlaylistsPath, @[
       newQuery("locale", locale),
@@ -99,9 +83,9 @@ proc getFeaturedPlaylists*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[FeaturedPlaylists](response)
 
-proc getNewReleases*(client: SpotifyClient | AsyncSpotifyClient,
+proc getNewReleases*(client: AsyncSpotifyClient,
   country = "", limit = 20,
-  offset = 0): Future[SpotifyResponse[Paging[SimpleAlbum]]] {.multisync.} =
+  offset = 0): Future[Paging[SimpleAlbum]] {.async.} =
   let
     path = buildPath(GetNewReleasesPath, @[
       newQuery("country", country),
@@ -111,15 +95,14 @@ proc getNewReleases*(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
     body = await response.body
     code = response.code
-  if code.is2xx:
-    result = success(code, to[Paging[SimpleAlbum]](body, "albums"))
-  else:
-    result = failure[Paging[SimpleAlbum]](code, body)
 
-proc getRecommendations*(client: SpotifyClient | AsyncSpotifyClient,
+  await response.handleError()
+  result = to[Paging[SimpleAlbum]](body, "albums")
+
+proc getRecommendations*(client: AsyncSpotifyClient,
   limit = 20, market = "",
   seedArtists, seedGenres, seedTracks: seq[string] = @[],
-  additionalQueries: seq[Query] = @[]): Future[SpotifyResponse[Recommendations]] {.multisync.} =
+  additionalQueries: seq[Query] = @[]): Future[Recommendations] {.async.} =
   var queries = concat(@[
     newQuery("limit", $limit),
     newQuery("market", market)

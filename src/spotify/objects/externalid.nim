@@ -14,8 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
-import json
-import strutils
+import json, strutils
 import jsonunmarshaller
 
 type

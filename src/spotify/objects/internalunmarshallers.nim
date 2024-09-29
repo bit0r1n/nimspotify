@@ -14,12 +14,8 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-02
 
-import json
-import strutils
-import sequtils
-import externalid
-import externalurl
-import jsonunmarshaller
+import json, strutils, sequtils
+import externalid, externalurl, jsonunmarshaller
 
 proc toSnakeCase(before: string): string =
   result = ""

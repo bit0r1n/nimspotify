@@ -14,9 +14,7 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-16
 
-import track
-import device
-import context
+import track, device, context
 
 type
   RepeatState* = enum

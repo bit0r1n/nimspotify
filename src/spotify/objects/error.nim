@@ -14,7 +14,11 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-04
 
+import httpcore
+
 type
-  Error* = ref object
+  ErrorSpotifyResponse* = ref object
     status*: int
     message*: string
+  SpotifyError* = ref object of CatchableError
+    status*: HttpCode

@@ -14,16 +14,9 @@
 # Author: Yoshihiro Tanaka <contact@cordea.jp>
 # date  : 2018-09-18
 
-import sequtils
-import spotifyuri
-import httpclient
-import spotifyclient
-import asyncdispatch
-import objects / error
-import objects / searchresult
-import objects / simpleplaylist
-import objects / spotifyresponse
-import objects / internalunmarshallers
+import spotifyuri, spotifyclient
+import sequtils, httpclient, asyncdispatch
+import objects / [ error, searchresult, simpleplaylist, spotifyresponse, internalunmarshallers ]
 
 const
   SearchPath = "/search"
@@ -35,9 +28,9 @@ type
     TypePlaylist = "playlist"
     TypeTrack = "track"
 
-proc internalSearch(client: SpotifyClient | AsyncSpotifyClient,
+proc internalSearch(client: AsyncSpotifyClient,
   q: string, searchTypes: seq[SearchType], market: string,
-  limit, offset: int, includeExternal: string): Future[SpotifyResponse[SearchResult]] {.multisync.} =
+  limit, offset: int, includeExternal: string): Future[SearchResult] {.async.} =
   let
     path = buildPath(SearchPath, @[
       newQuery("q", q),
@@ -52,12 +45,12 @@ proc internalSearch(client: SpotifyClient | AsyncSpotifyClient,
     response = await client.request(path)
   result = await toResponse[SearchResult](response)
 
-proc search*(client: SpotifyClient | AsyncSpotifyClient,
+proc search*(client: AsyncSpotifyClient,
   q: string, searchTypes: seq[SearchType], market = "",
-  limit = 20, offset = 0): Future[SpotifyResponse[SearchResult]] {.multisync.} =
+  limit = 20, offset = 0): Future[SearchResult] {.async.} =
   result = await client.internalSearch(q, searchTypes, market, limit, offset, "")
 
-proc searchWithAudio*(client: SpotifyClient | AsyncSpotifyClient,
+proc searchWithAudio*(client: AsyncSpotifyClient,
   q: string, searchTypes: seq[SearchType], market = "",
-  limit = 20, offset = 0): Future[SpotifyResponse[SearchResult]] {.multisync.} =
+  limit = 20, offset = 0): Future[SearchResult] {.async.} =
   result = await client.internalSearch(q, searchTypes, market, limit, offset, "audio")
