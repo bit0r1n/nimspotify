@@ -2,7 +2,7 @@
 
 # spotify
 
-A Nim wrapper for the Spotify Web API.
+A Nim wrapper for the Spotify Web API. Point of this fork is make it only async to handle rate-limit and return only response of Spotify, not the wrapper with `data, error, ...`
 
 ## Usage
 
@@ -10,30 +10,29 @@ This package supports authorization code grant and client credentials grant.
 
 ```nim
 let
-  token = newHttpClient().authorizationCodeGrant(
+  token = newAsyncHttpClient().authorizationCodeGrant(
     "SPOTIFY_ID",
     "SPOTIFY_SECRET",
     @[SCOPES]
   )
-  client = newSpotifyClient(token)
+  client = newAsyncSpotifyClient(token)
 ```
 
 Or in your own way...
 
 ```nim
-let client = newSpotifyClient(
+let client = newAsyncSpotifyClient(
   newSpotifyToken("ACCESS_TOKEN", "REFRESH_TOKEN (optional)", "EXPIRES_IN (optional)"))
 ```
 
 And
 
 ```nim
-let user = client.getCurrentUser()
-
-if user.isSuccess:
-  echo user.data.id
-else:
-  echo user.error.message
+try: 
+  let user = waitFor client.getCurrentUser()
+  echo user.id
+except ErrorSpotifyResponse as e:
+  echo e.msg
 ```
 
 ## License
