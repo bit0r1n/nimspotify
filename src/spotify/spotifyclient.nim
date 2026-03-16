@@ -28,7 +28,6 @@ type
   BaseClient = object of RootObj
     accessToken, refreshToken, expiresIn: string
   AsyncSpotifyClient* = ref object of BaseClient
-    client: AsyncHttpClient
 
   UnsupportedAuthorizationFlowError = object of CatchableError
 
@@ -58,21 +57,11 @@ proc newSpotifyToken(json, refreshToken: string): SpotifyToken =
     expiresIn: json["expires_in"].getStr
   )
 
-proc newAsyncSpotifyClient*(client: AsyncHttpClient, token: SpotifyToken): AsyncSpotifyClient =
-  return AsyncSpotifyClient(
-    accessToken: token.accessToken,
-    refreshToken: token.refreshToken,
-    expiresIn: token.expiresIn,
-    client: client
-  )
-
 proc newAsyncSpotifyClient*(token: SpotifyToken): AsyncSpotifyClient =
-  let client = newAsyncHttpClient()
   return AsyncSpotifyClient(
     accessToken: token.accessToken,
     refreshToken: token.refreshToken,
-    expiresIn: token.expiresIn,
-    client: client
+    expiresIn: token.expiresIn
   )
 
 proc authorizationCodeGrant*(client: AsyncHttpClient,
@@ -92,8 +81,10 @@ proc refreshToken*(client: AsyncSpotifyClient,
   clientId, clientSecret: string, scope: seq[string]): Future[SpotifyToken] {.async.} =
   if client.refreshToken == "":
     raise newException(UnsupportedAuthorizationFlowError, "Refresh token is empty.")
-  let response = await client.client.refreshToken(
-    TokenUrl, clientId, clientSecret, client.refreshToken, scope)
+  let
+    requestClient = newAsyncHttpClient()
+    response = await requestClient.refreshToken(
+      TokenUrl, clientId, clientSecret, client.refreshToken, scope)
   result = newSpotifyToken(await response.body, client.refreshToken)
   client.accessToken = result.accessToken
   client.expiresIn = result.expiresIn
@@ -106,8 +97,10 @@ proc request*(client: AsyncSpotifyClient, path: string,
   if extraHeaders != nil:
     for k, v in extraHeaders.table:
       headers[k] = v
-  let response = await client.client.request($(BaseUrl.parseUri() / path),
-    httpMethod = httpMethod, headers = headers, body = body)
+  let
+    requestClient = newAsyncHttpClient()
+    response = await requestClient.request($(BaseUrl.parseUri() / path),
+      httpMethod = httpMethod, headers = headers, body = body)
   if response.code == Http429:
     await sleepAsync(parseInt(response.headers["Retry-After", 0]) * 1_000)
     result = await client.request(path, httpMethod, body, extraHeaders)
