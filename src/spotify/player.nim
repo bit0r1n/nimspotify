@@ -37,12 +37,10 @@ proc getUserDevices*(client: AsyncSpotifyClient
   ): Future[seq[Device]] {.async.} =
   let
     response = await client.request(GetUserDevicesPath)
-    body = await response.body
-    code = response.code
     unmarshaller = newJsonUnmarshaller(deviceReplaceTargets)
 
   await response.handleError()
-  result = toSeq[Device](unmarshaller, body, "devices")
+  result = toSeq[Device](unmarshaller, response.body, "devices")
 
 proc getUserCurrentlyPlayingContext*(client: AsyncSpotifyClient,
   market = ""): Future[CurrentlyPlayingContext] {.async.} =
@@ -96,7 +94,6 @@ proc setRepeat*(client: AsyncSpotifyClient,
       newQuery("device_id", deviceId)
     ])
     response = await client.request(path, httpMethod = HttpPut)
-    body = await response.body
   await response.handleError()
 
 proc setVolume*(client: AsyncSpotifyClient,

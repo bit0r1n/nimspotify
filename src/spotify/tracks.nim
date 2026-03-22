@@ -30,7 +30,6 @@ proc getAudioAnalysis*(client: AsyncSpotifyClient,
   let
     path = buildPath(GetAudioAnalysisPath.fmt, @[])
     response = await client.request(path)
-    body = await response.body
   result = await toResponse[AudioAnalysis](response)
 
 proc getAudioFeature*(client: AsyncSpotifyClient,
@@ -47,11 +46,9 @@ proc getAudioFeatures*(client: AsyncSpotifyClient,
       newQuery("ids", ids.foldr(a & "," & b)),
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = toSeq[AudioFeature](body, "audio_features")
+  result = toSeq[AudioFeature](response.body, "audio_features")
 
 proc getTrack*(client: AsyncSpotifyClient,
   id: string, market = ""): Future[Track] {.async.} =
@@ -67,8 +64,6 @@ proc getTracks*(client: AsyncSpotifyClient,
       newQuery("ids", ids.foldr(a & "," & b)),
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = toSeq[Track](body, "tracks")
+  result = toSeq[Track](response.body, "tracks")

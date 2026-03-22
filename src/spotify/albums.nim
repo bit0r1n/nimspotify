@@ -51,9 +51,8 @@ proc getAlbums*(client: AsyncSpotifyClient,
       newQuery("market", market)
     ])
     response = await client.request(path)
-    body = await response.body
     unmarshaller = newJsonUnmarshaller(copyrightReplaceTargets)
     code = response.code
 
   await response.handleError()
-  result = toSeq[Album](unmarshaller, body, "albums")
+  result = toSeq[Album](unmarshaller, response.body, "albums")

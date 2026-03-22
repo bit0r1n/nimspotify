@@ -46,11 +46,9 @@ proc getCategoryPlaylists*(client: AsyncSpotifyClient,
       newQuery("offset", $offset)
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = to[Paging[SimplePlaylist]](body, "playlists")
+  result = to[Paging[SimplePlaylist]](response.body, "playlists")
 
 proc getCategories*(client: AsyncSpotifyClient,
   country, locale = "", limit = 20,
@@ -63,11 +61,9 @@ proc getCategories*(client: AsyncSpotifyClient,
       newQuery("offset", $offset)
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = to[Paging[Category]](body, "categories")
+  result = to[Paging[Category]](response.body, "categories")
 
 proc getFeaturedPlaylists*(client: AsyncSpotifyClient,
   country, locale, timestamp = "", limit = 20,
@@ -93,11 +89,9 @@ proc getNewReleases*(client: AsyncSpotifyClient,
       newQuery("offset", $offset)
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = to[Paging[SimpleAlbum]](body, "albums")
+  result = to[Paging[SimpleAlbum]](response.body, "albums")
 
 proc getRecommendations*(client: AsyncSpotifyClient,
   limit = 20, market = "",

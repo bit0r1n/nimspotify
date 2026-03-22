@@ -35,12 +35,10 @@ proc internalIsSaved(client: AsyncSpotifyClient,
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
 
-  let json = parseJson body
+  let json = parseJson response.body
   for elem in json.elems:
     result.add elem.getBool
 

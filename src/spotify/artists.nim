@@ -61,30 +61,24 @@ proc getArtistTopTracks*(client: AsyncSpotifyClient,
   let
     path = buildPath(GetArtistTopTracksPath.fmt, @[newQuery("market", market)])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = toSeq[Track](body, "tracks")
+  result = toSeq[Track](response.body, "tracks")
 
 proc getArtistRelatedArtists*(client: AsyncSpotifyClient,
   id: string): Future[seq[Artist]] {.async.} =
   let
     path = buildPath(GetArtistRelatedArtistsPath.fmt, @[])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = toSeq[Artist](body, "artists")
+  result = toSeq[Artist](response.body, "artists")
 
 proc getArtists*(client: AsyncSpotifyClient,
   ids: seq[string]): Future[seq[Artist]] {.async.} =
   let
     path = buildPath(GetArtistsPath, @[newQuery("ids", ids.foldr(a & "," & b))])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = toSeq[Artist](body, "artists")
+  result = toSeq[Artist](response.body, "artists")

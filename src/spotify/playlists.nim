@@ -126,11 +126,9 @@ proc getPlaylistCoverImage*(client: AsyncSpotifyClient,
   let
     path = buildPath(GetPlaylistCoverImagePath.fmt, @[])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = toSeq[Image](body)
+  result = toSeq[Image](response.body)
 
 proc getPlaylist*(client: AsyncSpotifyClient,
   playlistId: string, fields, market = ""): Future[Playlist] {.async.} =

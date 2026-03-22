@@ -35,11 +35,9 @@ proc internalIsFollow(client: AsyncSpotifyClient,
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  let json = parseJson body
+  let json = parseJson response.body
   for elem in json.elems:
     result.add elem.getBool
 
@@ -59,11 +57,9 @@ proc isFollowPlaylist*(client: AsyncSpotifyClient,
       newQuery("ids", ids.foldr(a & "," & b))
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  let json = parseJson body
+  let json = parseJson response.body
   for elem in json.elems:
     result.add elem.getBool
 
@@ -102,11 +98,9 @@ proc getFollowedArtists*(client: AsyncSpotifyClient,
       newQuery("after", after)
     ])
     response = await client.request(path)
-    body = await response.body
-    code = response.code
 
   await response.handleError()
-  result = to[CursorBasedPaging[Artist]](body, "artists")
+  result = to[CursorBasedPaging[Artist]](response.body, "artists")
 
 proc internalUnfollow(client: AsyncSpotifyClient,
   followType: string, ids: seq[string]) {.async.} =

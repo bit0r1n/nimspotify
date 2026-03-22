@@ -17,12 +17,12 @@
 import json, httpcore, httpclient, asyncdispatch
 import error, jsonunmarshaller, internalunmarshallers
 
+type ClientResponse = tuple[body: string, code: HttpCode]
+
 proc toResponse*[T: ref object](unmarshaller: JsonUnmarshaller,
-  response: AsyncResponse): Future[T] {.async.} =
-  let
-    body = await response.body
-    code = response.code
-  if code.is2xx:
+  response: ClientResponse): Future[T] {.async.} =
+  let body = response.body
+  if response.code.is2xx:
     if body == "":
       result = nil
     else:
@@ -35,23 +35,20 @@ proc toResponse*[T: ref object](unmarshaller: JsonUnmarshaller,
 
     raise e
 
-proc toResponse*[T : ref object](response: AsyncResponse
+proc toResponse*[T : ref object](response: ClientResponse
   ): Future[T] {.async.} =
   result = await toResponse[T](newJsonUnmarshaller(), response)
 
-proc handleError*(unmarshaller: JsonUnmarshaller, response: AsyncResponse
+proc handleError*(unmarshaller: JsonUnmarshaller, response: ClientResponse
   ) {.async.} =
-  let
-    body = await response.body
-    code = response.code
-  if not code.is2xx:
-    let errorResponse = to[ErrorSpotifyResponse](unmarshaller, body, "error")
+  if not response.code.is2xx:
+    let errorResponse = to[ErrorSpotifyResponse](unmarshaller, response.body, "error")
     var e: SpotifyError
     e.msg = errorResponse.message
     e.status = HttpCode(errorResponse.status)
 
     raise e
 
-proc handleError*(response: AsyncResponse
+proc handleError*(response: ClientResponse
   ) {.async.} =
     await handleError(newJsonUnmarshaller(), response)

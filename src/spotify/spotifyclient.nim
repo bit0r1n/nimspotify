@@ -29,7 +29,8 @@ type
     accessToken, refreshToken, expiresIn: string
   AsyncSpotifyClient* = ref object of BaseClient
 
-  UnsupportedAuthorizationFlowError = object of CatchableError
+  UnsupportedAuthorizationFlowError* = object of CatchableError
+  RateLimitBigWindowError* = object of CatchableError
 
 proc newSpotifyToken*(accessToken, refreshToken, expiresIn: string): SpotifyToken =
   return SpotifyToken(
@@ -92,17 +93,21 @@ proc refreshToken*(client: AsyncSpotifyClient,
 
 proc request*(client: AsyncSpotifyClient, path: string,
   httpMethod = HttpGet, body = "",
-  extraHeaders: HttpHeaders = nil): Future[AsyncResponse] {.async.} =
+  extraHeaders: HttpHeaders = nil): Future[tuple[body: string, code: HttpCode]] {.async.} =
   var headers = getBearerRequestHeader(client.accessToken)
   if extraHeaders != nil:
     for k, v in extraHeaders.table:
       headers[k] = v
-  let
-    requestClient = newAsyncHttpClient()
-    response = await requestClient.request($(BaseUrl.parseUri() / path),
+  let requestClient = newAsyncHttpClient()
+  defer: requestClient.close()
+  let response = await requestClient.request($(BaseUrl.parseUri() / path),
       httpMethod = httpMethod, headers = headers, body = body)
   if response.code == Http429:
+    let retryAfterSeconds = parseInt(response.headers["Retry-After", 0])
+    if retryAfterSeconds > 60:
+      raise newException(RateLimitBigWindowError, "Rate limit window is too big (" & $retryAfterSeconds & " seconds)")
     await sleepAsync(parseInt(response.headers["Retry-After", 0]) * 1_000)
     result = await client.request(path, httpMethod, body, extraHeaders)
   else:
-    result = response
+    let body = await response.body()
+    result = (body, response.code)
